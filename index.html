@@ -194,6 +194,20 @@ main{padding-block:36px 24px}
 .mono{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-family:var(--serif);font-weight:600;font-size:15px;color:#fff;flex:none}
 .stock .head{display:flex;gap:12px;align-items:center;min-width:0}
 
+
+/* FEEDBACK */
+.fb{margin-top:36px;border-top:1px solid var(--rule);padding-top:18px}
+.fb-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;font-size:14px;color:var(--ink-mid)}
+.fb-row b{color:var(--ink);font-weight:600}
+.fb button{appearance:none;font:500 13.5px var(--sans);border:1px solid var(--rule-strong);background:var(--surface);color:var(--ink-mid);padding:7px 14px;border-radius:999px;cursor:pointer}
+.fb button:hover{border-color:var(--bronze)}
+.fb button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.fb-box{display:grid;gap:10px;margin-top:12px;max-width:640px}
+.fb-box[hidden]{display:none}
+.fb-box textarea{width:100%;min-height:84px;font:15px var(--sans);color:var(--ink);background:var(--surface);border:1px solid var(--rule-strong);border-radius:10px;padding:10px 12px;resize:vertical}
+.fb-box .acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.fb-msg{font-size:12.5px;color:var(--ink-soft)}
+
 /* Need to know */
 .timeline{list-style:none;margin:0;padding:0;display:grid;gap:0;position:relative}
 .timeline li{display:grid;grid-template-columns:120px 22px minmax(0,1fr);gap:0 16px;padding-bottom:22px;position:relative}
@@ -843,13 +857,18 @@ footer b{font-weight:600;color:var(--bronze);letter-spacing:.14em;text-transform
       return '<section class="sig"><div class="sec-head"><h2>Valuation signals</h2><span>'+esc(WL.title||WL.label||'Your watchlist')+' vs Morningstar fair value</span></div><div class="card sig-list">'+list+'</div>'+ideas+
         '<p class="disclaim">Signals show Morningstar’s analyst star ratings and fair value estimates (quantitative estimates where no analyst covers the stock) against the latest close. A deep discount means the price is at least 20% below fair value with 4 or 5 stars. These are research inputs, not a buy recommendation; check suitability, risk and timing before acting for yourself or clients.</p></section>'}
     var html='<section><div class="sec-head"><h2>'+esc(WL.title||WL.label||'Your watchlist')+'</h2><span>'+esc(WL.asOf)+'</span></div>'+
-      '<div class="wl-top"><div class="wl-sum num"><span><b>'+up+'</b> up · <b>'+dn+'</b> down on the day</span><span>Best: <b style="color:var(--gain)">'+esc(best.tk)+' '+pct(best.d1)+'</b></span><span>Worst: <b style="color:var(--loss)">'+esc(worst.tk)+' '+pct(worst.d1)+'</b></span></div>'+
+      '<div class="wl-top"><div class="wl-sum num" id="wlSum'+wi+'"></div>'+
       '<div class="seg" role="group" aria-label="Measure" id="wlSeg'+wi+'"><button type="button" data-m="d1" aria-pressed="true">Day</button><button type="button" data-m="m1" aria-pressed="false">1 month</button><button type="button" data-m="y1" aria-pressed="false">1 year</button></div></div>'+
       '<div class="heat" id="heat'+wi+'"></div><div class="card wl-detail" id="wlDetail'+wi+'"></div></section>';
     var gk=GRP[WL.key];if(gk){ensureGroup(gk);var tgt=$(gk==='ubsn'?'sp-ubsn-hold':'sp-ocf-'+WL.key+'-h');if(tgt)tgt.innerHTML=(gk==='ocf'?'<div class="sec-head"><h2>Holdings</h2><span>'+esc(WL.asOf||'')+'</span></div>':'')+html;else pane(WL.key||('watchlist'+wi),WL.label||'Watchlist',WI.length,html)}else pane(WL.key||('watchlist'+wi),WL.label||'Watchlist',WI.length,html);
     var metric='d1',sel=0;
     function tint(v,scale){var a=Math.min(1,Math.abs(v)/scale);var c=v>=0?'var(--gain)':'var(--loss)';return 'background:color-mix(in srgb,'+c+' '+Math.round(6+a*26)+'%,var(--surface))'}
-    function drawHeat(){var sc=metric==='d1'?4:metric==='m1'?15:50;
+    function drawSum(){var lab=metric==='d1'?'on the day':metric==='m1'?'over 1 month':'over 1 year';
+      var V=WI.filter(function(w){return typeof w[metric]==='number'&&isFinite(w[metric])}).sort(function(a,b){return b[metric]-a[metric]});
+      var el=$('wlSum'+wi);if(!V.length){el.innerHTML='<span>No data for this period</span>';return}
+      var u=V.filter(function(w){return w[metric]>0}).length,d=V.filter(function(w){return w[metric]<0}).length,bs=V[0],ws=V[V.length-1];
+      el.innerHTML='<span><b>'+u+'</b> up · <b>'+d+'</b> down '+lab+(V.length<WI.length?' <small>('+V.length+' of '+WI.length+' with data)</small>':'')+'</span><span>Best: <b style="color:var(--gain)">'+esc(bs.tk)+' '+pct(bs[metric])+'</b></span><span>Worst: <b style="color:var(--loss)">'+esc(ws.tk)+' '+pct(ws[metric])+'</b></span>'}
+    function drawHeat(){drawSum();var sc=metric==='d1'?4:metric==='m1'?15:50;
       $('heat'+wi).innerHTML=WI.map(function(w,i){var v=w[metric];return '<button class="tile" type="button" data-i="'+i+'" aria-pressed="'+(i===sel)+'" style="'+tint(v,sc)+'"><span class="tt"><span class="tk">'+esc(w.tk)+'</span><span class="ex">'+esc(w.ex)+'</span></span><span class="nm">'+esc(w.name)+'</span><span class="px num">'+px(w)+'</span><span class="pc num" style="color:var(--'+(v>=0?'gain':'loss')+')">'+(v>=0?'▲ ':'▼ ')+pct(v)+'</span>'+spark(w.series,v>=0?'var(--gain)':'var(--loss)')+'</button>'}).join('')}
     function fmtD(s){var d=new Date(s+'T12:00:00');return d.toLocaleDateString('en-ZA',{day:'numeric',month:'short'})}
     function drawDetail(){var w=WI[sel],s=w.series||[],dts=WL.dates||[];var W2=560,H2=220,pl=44,pr=10,pt=12,pb=26;
@@ -975,6 +994,39 @@ footer b{font-weight:600;color:var(--bronze);letter-spacing:.14em;text-transform
     var kc={today:'var(--loss)',ordian:'var(--bronze)',global:'var(--c3)',sa:'var(--gain)'},kl={today:'Today',ordian:'Ordian',global:'Global',sa:'South Africa'};
     pane('know','Need to know',NK.length,'<section><div class="sec-head"><h2>Need to know</h2><span>Dates and decisions ahead</span></div><div class="card ntk"><ol class="timeline">'+NK.map(function(n){return '<li><div class="when">'+esc(n.when)+'</div><div class="dot"><i style="background:'+(kc[n.kind]||'var(--ink-soft)')+'"></i></div><div class="body"><span class="kind">'+esc(kl[n.kind]||'')+'</span><span class="what">'+esc(n.what)+'</span><p>'+esc(n.text)+'</p></div></li>'}).join('')+'</ol></div></section>');
   }
+
+  /* FEEDBACK: useful / not useful and comments, per section. Sent by email to Ordian. */
+  (function(){
+    var TO='jonathan@ordiancapital.co.za',KEY='omb-fb',st={};
+    try{st=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){st={}}
+    function save(){try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}}
+    function who(){var n='';try{n=localStorage.getItem('om-name')||''}catch(e){}return n}
+    panes.forEach(function(p){
+      var s=st[p.id]||{},el=$('p-'+p.id);if(!el)return;
+      el.insertAdjacentHTML('beforeend','<div class="fb" data-p="'+p.id+'"><div class="fb-row"><b>Is “'+esc(p.label)+'” useful to you?</b>'+
+        '<button type="button" data-r="up" aria-pressed="'+(s.r==='up')+'">👍 Useful</button>'+
+        '<button type="button" data-r="down" aria-pressed="'+(s.r==='down')+'">👎 Not useful</button>'+
+        '<button type="button" data-r="note" aria-pressed="false">💬 Comment</button></div>'+
+        '<div class="fb-box" hidden><textarea placeholder="What would make this more useful? Anything to add, change or remove?" maxlength="1500" aria-label="Comment on '+esc(p.label)+'"></textarea>'+
+        '<div class="acts"><button type="button" data-r="send">Send feedback</button><button type="button" data-r="copy">Copy text</button><span class="fb-msg"></span></div></div></div>');
+      if(s.c){el.querySelector('.fb textarea').value=s.c}
+    });
+    function compose(id){
+      var p=panes.filter(function(x){return x.id===id})[0],s=st[id]||{},nm=who();
+      var rt=s.r==='up'?'Useful':s.r==='down'?'Not useful':'(no rating)';
+      var body='Section: '+p.label+'\nRating: '+rt+'\nComment: '+(s.c||'(none)')+'\n\nFrom: '+(nm||'(name not set)')+'\nBrief date: '+D.date;
+      return {subject:'Ordian Market Brief feedback - '+p.label+(nm?' - '+nm:''),body:body}}
+    M.addEventListener('click',function(e){
+      var b=e.target.closest('.fb button');if(!b)return;
+      var box=b.closest('.fb'),id=box.dataset.p,r=b.dataset.r,s=st[id]=st[id]||{},tb=box.querySelector('.fb-box'),msg=box.querySelector('.fb-msg');
+      if(r==='up'||r==='down'){s.r=s.r===r?null:r;box.querySelectorAll('[data-r=up],[data-r=down]').forEach(function(x){x.setAttribute('aria-pressed',x.dataset.r===s.r)});save();tb.hidden=false;msg.textContent=s.r?'Thanks. Add a comment if you like, then press Send feedback.':''}
+      else if(r==='note'){tb.hidden=!tb.hidden;if(!tb.hidden)tb.querySelector('textarea').focus()}
+      else{s.c=tb.querySelector('textarea').value.trim();save();var m=compose(id);
+        if(r==='send'){if(!s.r&&!s.c){msg.textContent='Please choose Useful / Not useful or write a comment first.';return}
+          window.location.href='mailto:'+TO+'?subject='+encodeURIComponent(m.subject)+'&body='+encodeURIComponent(m.body);msg.textContent='Your email app should open with the message ready to send. If it does not, press Copy text and email it to '+TO+'.'}
+        else{var t=m.subject+'\n\n'+m.body;if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){msg.textContent='Copied. Please paste it into an email to '+TO+'.'},function(){msg.textContent='Could not copy. Please email '+TO+' directly.'})}else{msg.textContent='Could not copy. Please email '+TO+' directly.'}}}});
+    M.addEventListener('input',function(e){var t=e.target;if(t.tagName!=='TEXTAREA'||!t.closest('.fb'))return;var id=t.closest('.fb').dataset.p;(st[id]=st[id]||{}).c=t.value;save()});
+  })();
 
   /* tab mechanics */
   var TL=$('tablist');
